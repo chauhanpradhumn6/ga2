@@ -3,7 +3,7 @@ import uuid
 
 from fastapi import FastAPI, HTTPException, Query, Request, Response
 
-EMAIL = "YOUR_EMAIL_HERE"  # exact logged-in email
+EMAIL = "24f2009282@ds.study.iitm.ac.in"
 ALLOWED_ORIGIN = "https://dash-50nkvw.example.com"
 
 app = FastAPI()
