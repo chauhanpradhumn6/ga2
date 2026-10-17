@@ -1,28 +1,37 @@
 import time
 import uuid
 
-from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, HTTPException, Query, Request, Response
 
 EMAIL = "YOUR_EMAIL_HERE"  # exact logged-in email
 ALLOWED_ORIGIN = "https://dash-50nkvw.example.com"
 
 app = FastAPI()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[ALLOWED_ORIGIN],
-    allow_credentials=False,
-    allow_methods=["GET", "OPTIONS"],
-    allow_headers=["*"],
-    expose_headers=["X-Request-ID", "X-Process-Time"],
-)
-
 
 @app.middleware("http")
-async def add_headers(request: Request, call_next):
+async def middleware(request: Request, call_next):
     start = time.perf_counter()
-    response = await call_next(request)
+    origin = request.headers.get("origin")
+    is_preflight = request.method == "OPTIONS"
+
+    if is_preflight:
+        response = Response(status_code=204)
+    else:
+        response = await call_next(request)
+
+    # CORS: only the exact allowed origin gets the header
+    response.headers["Vary"] = "Origin"
+    if origin == ALLOWED_ORIGIN:
+        response.headers["Access-Control-Allow-Origin"] = ALLOWED_ORIGIN
+        response.headers["Access-Control-Expose-Headers"] = "X-Request-ID, X-Process-Time"
+        if is_preflight:
+            response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+            response.headers["Access-Control-Allow-Headers"] = (
+                request.headers.get("access-control-request-headers") or "*"
+            )
+            response.headers["Access-Control-Max-Age"] = "600"
+
     response.headers["X-Request-ID"] = str(uuid.uuid4())
     response.headers["X-Process-Time"] = f"{time.perf_counter() - start:.6f}"
     return response
